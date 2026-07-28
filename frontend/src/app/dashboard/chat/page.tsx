@@ -11,15 +11,33 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [useMemory, setUseMemory] = useState(true);
+  const [hasReviews, setHasReviews] = useState(false);
+  const [checkingReviews, setCheckingReviews] = useState(true);
   const [sessionId, setSessionId] = useState("");
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setSessionId(`s_${Math.random().toString(36).substr(2, 9)}`); }, []);
+  useEffect(() => {
+  const checkReviews = async () => {
+    const token = localStorage.getItem("bizinsight_token") || "";
+
+    try {
+      const summary = await api.getSummary(token);
+      setHasReviews(summary.total_reviews > 0);
+    } catch {
+      setHasReviews(false);
+    } finally {
+      setCheckingReviews(false);
+    }
+  };
+
+  checkReviews();
+}, []);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
 
   const send = async (text: string) => {
-    if (!text.trim() || loading) return;
+    if (!hasReviews || !text.trim() || loading) return;
     setMessages(p => [...p, { role: "user", content: text }]);
     setInput(""); setLoading(true);
     const token = localStorage.getItem("bizinsight_token") || "";
@@ -72,10 +90,24 @@ export default function ChatPage() {
             {loading && (<div className="flex gap-2.5 mr-auto items-center"><div className="w-7 h-7 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center"><Bot size={14} /></div><div className="px-4 py-2.5 rounded-2xl rounded-tl-sm bg-zinc-100 dark:bg-zinc-800 text-xs text-zinc-500 flex items-center gap-2"><RefreshCw className="animate-spin" size={12} /> Thinking...</div></div>)}
             <div ref={endRef} />
           </div>
+          {!hasReviews && !checkingReviews && (
+  <p className="mb-3 text-sm text-zinc-500 dark:text-zinc-400">
+    Upload review data to start asking questions.
+  </p>
+)}
           <form onSubmit={e => { e.preventDefault(); send(input); }} className="flex gap-2 p-3 border-t border-zinc-200 dark:border-zinc-800">
-            <input type="text" value={input} onChange={e => setInput(e.target.value)} placeholder="Ask about your reviews..." className="flex-1 border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white" disabled={loading} />
-            <button type="submit" disabled={loading || !input.trim()} className="px-4 py-2 rounded-lg bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium hover:opacity-90 disabled:opacity-50"><Send size={15} /></button>
-          </form>
+            <input type="text" value={input} onChange={e => setInput(e.target.value)} placeholder={
+  hasReviews
+    ? "Ask about your reviews..."
+    : "Upload review data to enable the AI Assistant"
+} className="flex-1 border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white" disabled={loading || !hasReviews} />
+<button
+  type="submit"
+  disabled={loading || !input.trim() || !hasReviews}
+  className="px-4 py-2 rounded-lg bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium hover:opacity-90 disabled:opacity-50"
+>
+  <Send size={15} />
+</button>          </form>
         </div>
 
         {/* Sidebar */}
@@ -83,7 +115,7 @@ export default function ChatPage() {
           <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl p-5">
             <h3 className="text-sm font-medium mb-3 flex items-center gap-2"><HelpCircle size={14} className="text-zinc-400" /> Suggested Prompts</h3>
             <div className="space-y-2">
-              {presets.map((q, i) => (<button key={i} onClick={() => send(q)} disabled={loading} className="w-full text-left text-xs p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition disabled:opacity-50">{q}</button>))}
+              {presets.map((q, i) => (<button key={i} onClick={() => send(q)} disabled={loading || !hasReviews} className="w-full text-left text-xs p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition disabled:opacity-50">{q}</button>))}
             </div>
           </div>
           <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl p-5">

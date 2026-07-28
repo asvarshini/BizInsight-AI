@@ -51,8 +51,11 @@ export default function DashboardHome() {
   useEffect(() => { fetchData(); }, []);
 
   // Use real data if available, else fallback (like the reference HTML)
+  
   const d = data || fallbackData;
   const a = alerts || fallbackAlerts;
+  const hasReviews = data !== null && data.total_reviews > 0;
+
 
   useEffect(() => {
     if (loading || countRef.current) return;
@@ -68,7 +71,7 @@ export default function DashboardHome() {
   }, [loading, d.total_reviews]);
 
   const handleChatSend = async (text: string) => {
-    if (!text.trim() || chatLoading) return;
+    if (!hasReviews || !text.trim() || chatLoading) return;
     setChatMessages(prev => [...prev, { role: "user", content: text }]);
     setChatInput("");
     setChatLoading(true);
@@ -179,9 +182,20 @@ export default function DashboardHome() {
           {chatLoading && (<div className="self-start max-w-[80%] bg-zinc-100 dark:bg-zinc-800 text-xs px-4 py-2 rounded-2xl rounded-bl-sm text-zinc-500 flex items-center gap-2"><RefreshCw className="animate-spin" size={12} /> Evaluating context...</div>)}
           <div ref={chatLogEndRef} />
         </div>
+
+        {!hasReviews && (
+          <p className="mb-3 text-sm text-zinc-500 dark:text-zinc-400">
+            Upload review data to start asking questions.
+          </p>
+        )}
+
         <form onSubmit={e => { e.preventDefault(); handleChatSend(chatInput); }} className="flex gap-2">
-          <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Ask a question about your reviews…" className="flex-1 border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white" disabled={chatLoading} />
-          <button type="submit" disabled={chatLoading || !chatInput.trim()} className="px-4 py-2 rounded-lg bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50">Ask</button>
+          <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder={
+  hasReviews
+    ? "Ask a question about your reviews…"
+    : "Upload review data to enable the AI Assistant"
+} className="flex-1 border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white" disabled={chatLoading || !hasReviews} />
+          <button type="submit" disabled={chatLoading || !chatInput.trim() || !hasReviews} className="px-4 py-2 rounded-lg bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50">Ask</button>
         </form>
       </div>
     </div>
